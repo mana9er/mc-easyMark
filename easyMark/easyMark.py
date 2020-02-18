@@ -64,7 +64,7 @@ class EasyMarker(QtCore.QObject):
     @QtCore.pyqtSlot(list)
     def on_server_output(self, lines):
         self.logger.debug('EasyMarker.on_server_output called')
-        match_obj = re.match(r'.*<(\w+?)> (.*)', lines[0])
+        match_obj = re.match(r'.*?<(\w+?)> (.*)', lines[0])
         if match_obj:
             player = match_obj.group(1)
             text = match_obj.group(2)
