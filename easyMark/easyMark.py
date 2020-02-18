@@ -86,13 +86,13 @@ class EasyMarker(QtCore.QObject):
     def help(self, player, text_list):
         self.logger.debug('EasyMarker.help called')
         self.server_tell(player, 'Welcome to easyMark!')
-        self.server_tell(player, 'You are able to use following commands:')
-        self.server_tell(player, '"!mark help": show this help message')
+        self.server_tell(player, 'You are able to use the following commands:')
+        self.server_tell(player, '"!mark help": show this help message.')
         self.server_tell(player, '"!mark list [public | private]": list out all the marks. Use argument "public" or "private" to see public or private marks only.')
         self.server_tell(player, '"!mark add [public] <name> <content>": add a mark. Use argument "public" to make it visible to all players.')
         self.server_tell(player, '"!mark rm <name>": remove a mark.')
         self.server_tell(player, '"!mark show <name>": show details of the mark.')
-        self.server_tell(player, '"!mark search <text>": search marks containing given text.')
+        self.server_tell(player, '"!mark search <text>": search marks containing the given text.')
 
     def list_marks(self, player, text_list):
         self.logger.debug('EasyMarker.list_marks called')
@@ -192,7 +192,7 @@ class EasyMarker(QtCore.QObject):
             else:
                 self.server_tell(player, 'Cannot find this mark. Make sure the name is correct.')
                 return
-            detail_str = ' mark "{}" was marked by {} at {}:'.format(mark['name'], mark['player'], mark['time'])
+            detail_str = ' mark "{}" was marked by {} at {}'.format(mark['name'], mark['player'], mark['time'])
             detail_str = 'Public' + detail_str if mark['public'] else 'Private' + detail_str
             self.server_tell(player, detail_str)
             self.server_tell(player, mark['content'])
