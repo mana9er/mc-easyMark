@@ -42,7 +42,7 @@ class EasyMarker(QtCore.QObject):
         self.core.write_server('/say {}'.format(text))
 
     def server_tell(self, player, text):
-        self.core.write_server('/tellraw {} {}'.format(player, json.dumps({'text': text})))
+        self.core.write_server('/tellraw {} {}'.format(player, json.dumps({'text': text, 'color': 'yellow'})))
 
     def check_op(self, player):
         self.logger.debug('EasyMarker.check_op called')
@@ -64,24 +64,25 @@ class EasyMarker(QtCore.QObject):
     @QtCore.pyqtSlot(list)
     def on_server_output(self, lines):
         self.logger.debug('EasyMarker.on_server_output called')
-        match_obj = re.match(r'.*?<(\w+?)> (.*)', lines[0])
-        if match_obj:
-            player = match_obj.group(1)
-            text = match_obj.group(2)
-            self.logger.debug('Player ' + player + ' says: ' + text)
-            text_list = text.split()
-            if text_list[0] == self.cmd_prefix:
-                if len(text_list) > 1 and text_list[1] in self.cmd_list.keys():
-                    try:
-                        self.cmd_list[text_list[1]](player, text_list)
-                    except AttributeError:
-                        self.logger.error('Fatal: AttributeError raised. Please check the console output.')
-                        self.server_tell(player, 'easyMark internal error raised.')
-                    except KeyError:
-                        self.logger.error('Fatal: KeyError raised. Please check the console output.')
-                        self.server_tell(player, 'easyMark internal error raised.')
-                else:
-                    self.unknown_command(player)
+        for line in lines:
+            match_obj = re.match(r'.*?<(\w+?)> (.*)', line)
+            if match_obj:
+                player = match_obj.group(1)
+                text = match_obj.group(2)
+                self.logger.debug('Player ' + player + ' says: ' + text)
+                text_list = text.split()
+                if text_list[0] == self.cmd_prefix:
+                    if len(text_list) > 1 and text_list[1] in self.cmd_list.keys():
+                        try:
+                            self.cmd_list[text_list[1]](player, text_list)
+                        except AttributeError:
+                            self.logger.error('Fatal: AttributeError raised. Please check the console output.')
+                            self.server_tell(player, 'easyMark internal error raised.')
+                        except KeyError:
+                            self.logger.error('Fatal: KeyError raised. Please check the console output.')
+                            self.server_tell(player, 'easyMark internal error raised.')
+                    else:
+                        self.unknown_command(player)
 
     def help(self, player, text_list):
         self.logger.debug('EasyMarker.help called')
@@ -145,7 +146,7 @@ class EasyMarker(QtCore.QObject):
         if player not in self.marks:
             self.marks[player] = {}
         if name in self.marks[player] or name in self.marks['.public']:
-            self.server_tell(player, 'This mark has already existed. Remove that mark first or rename your mark.')
+            self.server_tell(player, 'This mark has already existed. Remove that mark first or choose another name.')
             return
         new_mark = {
             'name': name,
@@ -173,7 +174,7 @@ class EasyMarker(QtCore.QObject):
                 self.server_tell(player, 'Mark "{}" has been successfully deleted.'.format(name))
                 return
             elif name in self.marks['.public']:
-                self.server_tell(player, 'This mark was not made by you. You have no right to remove it.')
+                self.server_tell(player, 'This mark was not made by you. Permission denied.')
                 return
             else:
                 self.server_tell(player, 'Cannot find this mark. Make sure the name is correct.')
@@ -203,6 +204,7 @@ class EasyMarker(QtCore.QObject):
         self.logger.debug('EasyMarker.search_marks called')
         if len(text_list) == 3:
             text = text_list[2]
+            # search public marks
             cnt = 0
             self.server_tell(player, 'Public marks:')
             for name in self.marks['.public']:
@@ -212,7 +214,7 @@ class EasyMarker(QtCore.QObject):
                     self.server_tell(player, name)
             if cnt == 0:
                 self.server_tell(player, 'No public mark found.')
-
+            # search private marks
             cnt = 0
             self.server_tell(player, 'Private marks:')
             if player in self.marks:
