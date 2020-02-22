@@ -5,6 +5,10 @@ import codecs
 import re
 import time
 
+import parser
+
+__all__ = ['EasyMarker']
+
 
 class EasyMarker(QtCore.QObject):
     cmd_prefix = '!mark'
@@ -70,7 +74,7 @@ class EasyMarker(QtCore.QObject):
                 player = match_obj.group(1)
                 text = match_obj.group(2)
                 self.logger.debug('Player ' + player + ' says: ' + text)
-                text_list = text.split()
+                text_list = parser.split_text(text)
                 if text_list[0] == self.cmd_prefix:
                     if len(text_list) > 1 and text_list[1] in self.cmd_list.keys():
                         try:
@@ -130,12 +134,16 @@ class EasyMarker(QtCore.QObject):
     def add_marks(self, player, text_list):
         self.logger.debug('EasyMarker.add_marks called')
         public = False
-        if text_list[2] == 'public' and len(text_list) == 5:
-            name, content = text_list[3], text_list[4]
-            if self.check_op(player):
-                public = True
+        if text_list[2] == 'public':
+            if len(text_list) == 5:
+                name, content = text_list[3], text_list[4]
+                if self.check_op(player):
+                    public = True
+                else:
+                    self.server_tell(player, 'Only op can make public marks. Permission denied.')
+                    return
             else:
-                self.server_tell(player, 'Only op can make a public mark.')
+                self.server_tell(player, 'Missing argument <content>.')
                 return
         elif len(text_list) == 4:
             name, content = text_list[2], text_list[3]
@@ -146,7 +154,7 @@ class EasyMarker(QtCore.QObject):
         if player not in self.marks:
             self.marks[player] = {}
         if name in self.marks[player] or name in self.marks['.public']:
-            self.server_tell(player, 'This mark has already existed. Remove that mark first or choose another name.')
+            self.server_tell(player, 'This mark has already existed. Remove that mark first or use another name.')
             return
         new_mark = {
             'name': name,
@@ -155,27 +163,34 @@ class EasyMarker(QtCore.QObject):
             'time': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
             'public': public
         }
-        self.marks[player][name] = new_mark
+
+        info = ' mark "{}" has been successfully saved.'.format(name)
         if public:
             self.marks['.public'][name] = new_mark
+            info = 'Public' + info
+        else:
+            self.marks[player][name] = new_mark
+            info = 'Private' + info
         json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
-        self.server_tell(player, 'Mark "{}" has been successfully saved.'.format(name))
+        self.server_tell(player, info)
 
     def rm_marks(self, player, text_list):
         self.logger.debug('EasyMarker.rm_marks called')
         if len(text_list) == 3:
             name = text_list[2]
             if player in self.marks and name in self.marks[player]:
-                public = self.marks[player][name]['public']
                 del self.marks[player][name]
-                if public:
-                    del self.marks['.public'][name]
                 json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
-                self.server_tell(player, 'Mark "{}" has been successfully deleted.'.format(name))
+                self.server_tell(player, 'Private mark "{}" has been successfully deleted.'.format(name))
                 return
             elif name in self.marks['.public']:
-                self.server_tell(player, 'This mark was not made by you. Permission denied.')
-                return
+                if self.check_op(player):
+                    del self.marks['.public'][name]
+                    json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
+                    self.server_tell(player, 'Public mark "{}" has been successfully deleted.'.format(name))
+                else:
+                    self.server_tell(player, 'Only op can remove public marks. Permission denied.')
+                    return
             else:
                 self.server_tell(player, 'Cannot find this mark. Make sure the name is correct.')
                 return
