@@ -5,7 +5,7 @@ import codecs
 import re
 import time
 
-import parser
+from . import parser
 
 __all__ = ['EasyMarker']
 
