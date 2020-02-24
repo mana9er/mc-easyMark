@@ -1,7 +1,6 @@
 from PyQt5 import QtCore
 import os
 import json
-import codecs
 import re
 import time
 
@@ -22,12 +21,14 @@ class EasyMarker(QtCore.QObject):
         # load previous saved marks
         if os.path.exists(self.saved_file):
             logger.info('Loading saved marks...')
-            self.marks = json.load(codecs.open(self.saved_file, 'r', encoding='utf-8'))
+            with open(self.saved_file, 'r', encoding='utf-8') as init_saving:
+                self.marks = json.load(init_saving)
         else:
             logger.warning('Failed to find previous saved marks')
             logger.info('Creating new marks...')
             self.marks = {'.public': {}}
-            json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
+            with open(self.saved_file, 'w', encoding='utf-8') as new_saving:
+                json.dump(self.marks, new_saving, indent=2)
 
         # connect signals and slots
         self.core.sig_server_output.connect(self.on_server_output)
@@ -51,10 +52,11 @@ class EasyMarker(QtCore.QObject):
     def check_op(self, player):
         self.logger.debug('EasyMarker.check_op called')
         if self.core.server_running:
-            ops = json.load(codecs.open('ops.json', 'r', encoding='utf-8'))
-            for op in ops:
-                if op['name'] == player:
-                    return True
+            with open('ops.json', 'r', encoding='utf-8') as op_file:
+                ops = json.load(op_file)
+                for op in ops:
+                    if op['name'] == player:
+                        return True
 
             return False
         else:
