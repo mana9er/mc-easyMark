@@ -1,8 +1,6 @@
 from PyQt5 import QtCore
 import os
 import json
-import codecs
-import re
 import time
 
 from . import parser
@@ -21,11 +19,12 @@ class EasyMarker(QtCore.QObject):
 
         # load previous saved marks
         if os.path.exists(self.saved_file):
-            logger.info('Loading saved marks...')
-            self.marks = json.load(codecs.open(self.saved_file, 'r', encoding='utf-8'))
+            self.logger.info('Loading saved marks...')
+            with open(self.saved_file, 'r', encoding='utf-8') as sf:
+                self.marks = json.load(sf)
         else:
-            logger.warning('Failed to find previous saved marks')
-            logger.info('Creating new marks...')
+            self.logger.warning('Failed to find previous saved marks')
+            self.logger.info('Creating new marks...')
             self.marks = {'.public': {}}
             json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
 
