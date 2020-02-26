@@ -30,7 +30,7 @@ class EasyMarker(QtCore.QObject):
             json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
 
         # connect signals and slots
-        self.core.sig_server_output.connect(self.on_server_output)
+        self.core.notifier.sig_input.connect(self.on_player_input)
 
         # available commands
         self.cmd_list = {
@@ -46,47 +46,35 @@ class EasyMarker(QtCore.QObject):
         self.core.write_server('/say {}'.format(text))
 
     def server_tell(self, player, text):
-        self.core.write_server('/tellraw {} {}'.format(player, json.dumps({'text': text, 'color': 'yellow'})))
+        self.core.write_server('/tellraw {} {}'.format(player.name, json.dumps({'text': text, 'color': 'yellow'})))
 
-    def check_op(self, player):
-        self.logger.debug('EasyMarker.check_op called')
-        if self.core.server_running:
-            ops = json.load(codecs.open('ops.json', 'r', encoding='utf-8'))
-            for op in ops:
-                if op['name'] == player:
-                    return True
-
-            return False
-        else:
-            self.logger.error('EasyMaker.check_op called when server is not running!')
-            return False
+    def server_warn(self, player, text):
+        self.core.write_server('/tellraw {} {}'.format(player.name, json.dumps({'text': text, 'color': 'red'})))
 
     def unknown_command(self, player):
         self.logger.warning('unknown command')
         self.server_tell(player, 'Unknown command. Type "!mark help" for help.')
 
-    @QtCore.pyqtSlot(list)
-    def on_server_output(self, lines):
-        self.logger.debug('EasyMarker.on_server_output called')
-        for line in lines:
-            match_obj = re.match(r'.*?<(\w+?)> (.*)', line)
-            if match_obj:
-                player = match_obj.group(1)
-                text = match_obj.group(2)
-                self.logger.debug('Player ' + player + ' says: ' + text)
-                text_list = parser.split_text(text)
-                if text_list[0] == self.cmd_prefix:
-                    if len(text_list) > 1 and text_list[1] in self.cmd_list.keys():
-                        try:
-                            self.cmd_list[text_list[1]](player, text_list)
-                        except AttributeError:
-                            self.logger.error('Fatal: AttributeError raised. Please check the console output.')
-                            self.server_tell(player, 'easyMark internal error raised.')
-                        except KeyError:
-                            self.logger.error('Fatal: KeyError raised. Please check the console output.')
-                            self.server_tell(player, 'easyMark internal error raised.')
-                    else:
-                        self.unknown_command(player)
+    @QtCore.pyqtSlot(tuple)
+    def on_player_input(self, pair):
+        self.logger.debug('EasyMarker.on_player_input called')
+        player = pair[0]
+        text = pair[1]
+        text_list = parser.split_text(text)
+        if player.is_console():
+            return
+        if text_list[0] == self.cmd_prefix:
+            if len(text_list) > 1 and text_list[1] in self.cmd_list.keys():
+                try:
+                    self.cmd_list[text_list[1]](player, text_list)
+                except AttributeError:
+                    self.logger.error('Fatal: AttributeError raised.')
+                    self.server_warn(player, 'easyMark internal error raised.')
+                except KeyError:
+                    self.logger.error('Fatal: KeyError raised.')
+                    self.server_warn(player, 'easyMark internal error raised.')
+            else:
+                self.unknown_command(player)
 
     def help(self, player, text_list):
         self.logger.debug('EasyMarker.help called')
@@ -125,8 +113,8 @@ class EasyMarker(QtCore.QObject):
                 self.server_tell(player, 'No public mark yet.')
         if private:
             self.server_tell(player, 'Private marks:')
-            if player in self.marks and len(self.marks[player]) > 0:
-                for mark in self.marks[player]:
+            if player.name in self.marks and len(self.marks[player.name]) > 0:
+                for mark in self.marks[player.name]:
                     self.server_tell(player, mark)
             else:
                 self.server_tell(player, 'No private mark yet.')
@@ -137,7 +125,7 @@ class EasyMarker(QtCore.QObject):
         if text_list[2] == 'public':
             if len(text_list) == 5:
                 name, content = text_list[3], text_list[4]
-                if self.check_op(player):
+                if player.is_op():
                     public = True
                 else:
                     self.server_tell(player, 'Only op can make public marks. Permission denied.')
@@ -151,15 +139,15 @@ class EasyMarker(QtCore.QObject):
             self.unknown_command(player)
             return
 
-        if player not in self.marks:
-            self.marks[player] = {}
-        if name in self.marks[player] or name in self.marks['.public']:
+        if player.name not in self.marks:
+            self.marks[player.name] = {}
+        if name in self.marks[player.name] or name in self.marks['.public']:
             self.server_tell(player, 'This mark has already existed. Remove that mark first or use another name.')
             return
         new_mark = {
             'name': name,
             'content': content,
-            'player': player,
+            'player': player.name,
             'time': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()),
             'public': public
         }
@@ -169,7 +157,7 @@ class EasyMarker(QtCore.QObject):
             self.marks['.public'][name] = new_mark
             info = 'Public' + info
         else:
-            self.marks[player][name] = new_mark
+            self.marks[player.name][name] = new_mark
             info = 'Private' + info
         json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
         self.server_tell(player, info)
@@ -178,13 +166,13 @@ class EasyMarker(QtCore.QObject):
         self.logger.debug('EasyMarker.rm_marks called')
         if len(text_list) == 3:
             name = text_list[2]
-            if player in self.marks and name in self.marks[player]:
-                del self.marks[player][name]
+            if player.name in self.marks and name in self.marks[player.name]:
+                del self.marks[player.name][name]
                 json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
                 self.server_tell(player, 'Private mark "{}" has been successfully deleted.'.format(name))
                 return
             elif name in self.marks['.public']:
-                if self.check_op(player):
+                if player.is_op:
                     del self.marks['.public'][name]
                     json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
                     self.server_tell(player, 'Public mark "{}" has been successfully deleted.'.format(name))
@@ -201,8 +189,8 @@ class EasyMarker(QtCore.QObject):
         self.logger.debug('EasyMarker.show_marks called')
         if len(text_list) == 3:
             name = text_list[2]
-            if player in self.marks and name in self.marks[player]:
-                mark = self.marks[player][name]
+            if player.name in self.marks and name in self.marks[player.name]:
+                mark = self.marks[player.name][name]
             elif name in self.marks['.public']:
                 mark = self.marks['.public'][name]
             else:
@@ -232,9 +220,9 @@ class EasyMarker(QtCore.QObject):
             # search private marks
             cnt = 0
             self.server_tell(player, 'Private marks:')
-            if player in self.marks:
-                for name in self.marks[player]:
-                    mark = self.marks[player][name]
+            if player.name in self.marks:
+                for name in self.marks[player.name]:
+                    mark = self.marks[player.name][name]
                     if text in mark['name'] or text in mark['content']:
                         cnt += 1
                         self.server_tell(player, name)
