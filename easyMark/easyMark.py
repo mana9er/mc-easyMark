@@ -12,7 +12,7 @@ class EasyMarker(QtCore.QObject):
     cmd_prefix = '!mark'
 
     def __init__(self, logger, core, saved_file):
-        super(EasyMarker, self).__init__()
+        super(EasyMarker, self).__init__(core)
         self.core = core
         self.logger = logger
         self.saved_file = saved_file
