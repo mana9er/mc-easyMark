@@ -11,11 +11,20 @@ __all__ = ['EasyMarker']
 class EasyMarker(QtCore.QObject):
     cmd_prefix = '!mark'
 
-    def __init__(self, logger, core, saved_file):
+    def __init__(self, logger, core, config_file, saved_file):
         super(EasyMarker, self).__init__(core)
         self.core = core
         self.logger = logger
         self.saved_file = saved_file
+
+        # load config
+        self.configs = {}
+        if os.path.exists(config_file):
+            self.logger.info('Loading configs...')
+            with open(config_file, 'r', encoding='utf-8') as cf:
+                self.configs = json.load(cf)
+        else:
+            self.logger.warning('config.json not found. Using default settings.')
 
         # load previous saved marks
         if os.path.exists(self.saved_file):
@@ -124,11 +133,24 @@ class EasyMarker(QtCore.QObject):
         if text_list[2] == 'public':
             if len(text_list) == 5:
                 name, content = text_list[3], text_list[4]
-                if player.is_op():
-                    public = True
+                
+                p_p_l = 'op'  # default setting is 'op'
+                if 'public_permission_level' in self.configs:
+                    p_p_l = self.configs['public_permission_level']
+                
+                if p_p_l == 'op':
+                    if player.is_op():
+                        public = True
+                    else:
+                        self.server_tell(player, 'Only op can make public marks. Permission denied.')
+                        return
                 else:
-                    self.server_tell(player, 'Only op can make public marks. Permission denied.')
-                    return
+                    public = True
+                    if p_p_l != 'any':
+                        self.logger.warning('Unacceptable keyword for "public_permission_level" in config.json')
+                        self.server_tell(player, 'Permission denied. Unacceptable config settings.')
+                        return
+
             else:
                 self.server_tell(player, 'Missing argument <content>.')
                 return
