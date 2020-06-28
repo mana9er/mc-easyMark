@@ -38,7 +38,7 @@ class EasyMarker(QtCore.QObject):
             json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
 
         # connect signals and slots
-        self.utils = self.core.get_plugin('mcBasicLib')
+        self.utils = core.get_plugin('mcBasicLib')
         if self.utils is None:
             self.disabled = True
         else:
