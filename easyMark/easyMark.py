@@ -37,12 +37,18 @@ class EasyMarker(QtCore.QObject):
             self.marks = {'.public': {}}
             json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
 
-        # connect signals and slots
+        # load mcBasicLib
         self.utils = core.get_plugin('mcBasicLib')
         if self.utils is None:
+            self.logger.error('Failed to load plugin "mcBasicLib", cmdRepost will be disabled.')
+            self.logger.error('Please make sure that "mcBasicLib" has been added to plugins.')
             self.disabled = True
-        else:
-            self.utils.sig_input.connect(self.on_player_input)
+
+        if self.disabled:
+            return
+        
+        # connect signals and slots
+        self.utils.sig_input.connect(self.on_player_input)
 
         # available commands
         self.cmd_list = {
