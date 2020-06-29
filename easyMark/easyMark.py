@@ -67,14 +67,10 @@ class EasyMarker(QtCore.QObject):
     @QtCore.pyqtSlot(tuple)
     def on_player_input(self, pair):
         self.logger.debug('EasyMarker.on_player_input called')
-        player = pair[0]
-        text = pair[1]
+        player, text = pair
         text_list = parser.split_text(text)
         
-        if len(text) == 0:
-            return
-        
-        if player.is_console():
+        if len(text_list) == 0:
             return
         
         if text_list[0] == self.cmd_prefix:
