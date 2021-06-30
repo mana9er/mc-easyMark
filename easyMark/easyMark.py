@@ -188,7 +188,7 @@ class EasyMarker(QtCore.QObject):
                 self.utils.tell(player, 'Private mark "{}" has been successfully deleted.'.format(name))
                 return
             elif name in self.marks['.public']:
-                if player.is_op:
+                if player.is_op():
                     del self.marks['.public'][name]
                     json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
                     self.utils.tell(player, 'Public mark "{}" has been successfully deleted.'.format(name))
