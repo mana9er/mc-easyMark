@@ -40,7 +40,7 @@ class EasyMarker(QtCore.QObject):
         # load mcBasicLib
         self.utils = core.get_plugin('mcBasicLib')
         if self.utils is None:
-            self.logger.error('Failed to load plugin "mcBasicLib", cmdRepost will be disabled.')
+            self.logger.error('Failed to load plugin "mcBasicLib", easyMark will be disabled.')
             self.logger.error('Please make sure that "mcBasicLib" has been added to plugins.')
             self.disabled = True
 
