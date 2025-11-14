@@ -127,7 +127,8 @@ class EasyMarker(QtCore.QObject):
         public = False
         if text_list[2] == 'public':
             if len(text_list) == 5:
-                name, content = text_list[3], text_list[4]
+                # parse the last text groups as content
+                name, content = text_list[3], parser.join_text_list(text_list[4:])
                 
                 p_p_l = 'op'  # default setting is 'op'
                 if 'public_permission_level' in self.configs:
@@ -150,7 +151,8 @@ class EasyMarker(QtCore.QObject):
                 self.utils.tell(player, 'Missing argument <content>.')
                 return
         elif len(text_list) == 4:
-            name, content = text_list[2], text_list[3]
+            # parse the last text groups as content
+            name, content = text_list[2], parser.join_text_list(text_list[3:])
         else:
             self.unknown_command(player)
             return
