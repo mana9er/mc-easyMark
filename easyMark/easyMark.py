@@ -110,15 +110,15 @@ class EasyMarker(QtCore.QObject):
         if public:
             self.utils.tell(player, 'Public marks:')
             if len(self.marks['.public']) > 0:
-                for mark in self.marks['.public']:
-                    self.utils.tell(player, mark)
+                for mark in self.marks['.public'].values():     # mark: dict
+                    self._tell_clickable_mark(player, mark)
             else:
                 self.utils.tell(player, 'No public mark yet.')
         if private:
             self.utils.tell(player, 'Private marks:')
             if player.name in self.marks and len(self.marks[player.name]) > 0:
-                for mark in self.marks[player.name]:
-                    self.utils.tell(player, mark)
+                for mark in self.marks[player.name].values():   # mark: dict
+                    self._tell_clickable_mark(player, mark)
             else:
                 self.utils.tell(player, 'No private mark yet.')
 
@@ -206,17 +206,15 @@ class EasyMarker(QtCore.QObject):
     def show_marks(self, player, text_list):
         self.logger.debug('EasyMarker.show_marks called')
         if len(text_list) == 3:
-            name = text_list[2]
-            if player.name in self.marks and name in self.marks[player.name]:
-                mark = self.marks[player.name][name]
-            elif name in self.marks['.public']:
-                mark = self.marks['.public'][name]
+            mark_name = text_list[2]
+            if player.name in self.marks and mark_name in self.marks[player.name]:
+                mark = self.marks[player.name][mark_name]
+            elif mark_name in self.marks['.public']:
+                mark = self.marks['.public'][mark_name]
             else:
                 self.utils.tell(player, 'Cannot find this mark. Make sure the name is correct.')
                 return
-            detail_str = ' mark "{}" was marked by {} at {}'.format(mark['name'], mark['player'], mark['time'])
-            detail_str = 'Public' + detail_str if mark['public'] else 'Private' + detail_str
-            self.utils.tell(player, detail_str)
+            self.utils.tell(player, self._gen_detail_str(mark))
             self.utils.tell(player, mark['content'])
         else:
             self.unknown_command(player)
@@ -248,3 +246,45 @@ class EasyMarker(QtCore.QObject):
                 self.utils.tell(player, 'No private mark found.')
         else:
             self.unknown_command(player)
+
+    def _gen_detail_str(self, mark: dict) -> str:
+        """ Generate the detail string for a mark. """
+        detail_str = ' mark "{}" was marked by {} at {}'.format(mark['name'], mark['player'], mark['time'])
+        detail_str = ('Public' if mark['public'] else 'Private') + detail_str
+        return detail_str
+    
+    def _tell_clickable_mark(self, player, mark: dict):
+        """ 
+        `/tellraw` the `player` the specified `mark` with clickEvent and hoverEvent.         
+        Keys required in the mark dict: `'name'`, `'content'`, `'player'`, `'time'`.
+        """
+        self.logger.debug('EasyMarker._tell_clickable_mark called')
+
+        click_textcomp = [
+            # the text component to show when the told mark is clicked
+            # keep the same output format as in `show_marks()`
+            {'text': self._gen_detail_str(mark), 'color': 'yellow'},
+            {'text': '\n' + mark['content'], 'color': 'yellow'}
+        ]
+        hover_textcomp = [     # the text component to show when hovering over the told mark
+            {'text': 'Marked by'},
+            {'text': ' {}'.format(mark['player']), 'color': 'aqua'},
+            {'text': ' at'},
+            {'text': ' {}'.format(mark['time']), 'color': 'gold', 'italic': True},
+            {'text': '\nClick to show its content', 'color': 'gray', 'italic': True},
+        ]
+        tell_textcomp = {
+            'text': mark['name'],
+            'color': 'aqua',
+            'underlined': True,
+            'hoverEvent': {
+                'action': 'show_text',
+                'value': hover_textcomp
+            },
+            'clickEvent': {
+                'action': 'run_command',
+                'value': '/tellraw @s {}'.format(json.dumps(click_textcomp))
+            }
+        }
+        
+        self.utils.tellraw(player, json.dumps(tell_textcomp))
