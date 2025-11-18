@@ -271,7 +271,7 @@ class EasyMarker(QtCore.QObject):
             {'text': ' {}'.format(mark['player']), 'color': 'aqua'},
             {'text': ' at'},
             {'text': ' {}'.format(mark['time']), 'color': 'gold', 'italic': True},
-            {'text': '\nClick to show its content', 'color': 'gray', 'italic': True},
+            {'text': '\nClick to show mark content.', 'color': 'gray', 'italic': True},
         ]
         tell_textcomp = {
             'text': mark['name'],
