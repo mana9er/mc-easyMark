@@ -126,7 +126,7 @@ class EasyMarker(QtCore.QObject):
         self.logger.debug('EasyMarker.add_marks called')
         public = False
         if text_list[2] == 'public':
-            if len(text_list) == 5:
+            if len(text_list) >= 5:
                 # parse the last text groups as content
                 name, content = text_list[3], parser.join_text_list(text_list[4:])
                 
@@ -150,16 +150,14 @@ class EasyMarker(QtCore.QObject):
             else:
                 self.utils.tell(player, 'Missing argument <content>.')
                 return
-        elif len(text_list) == 4:
+        elif len(text_list) >= 4:
             # parse the last text groups as content
             name, content = text_list[2], parser.join_text_list(text_list[3:])
         else:
             self.unknown_command(player)
             return
 
-        if player.name not in self.marks:
-            self.marks[player.name] = {}
-        if name in self.marks[player.name] or name in self.marks['.public']:
+        if name in self.marks['.public'] or name in self.marks.get(player.name, {}):
             self.utils.tell(player, 'This mark has already existed. Remove that mark first or use another name.')
             return
         new_mark = {
@@ -175,6 +173,8 @@ class EasyMarker(QtCore.QObject):
             self.marks['.public'][name] = new_mark
             info = 'Public' + info
         else:
+            if player.name not in self.marks:
+                self.marks[player.name] = {}
             self.marks[player.name][name] = new_mark
             info = 'Private' + info
         json.dump(self.marks, open(self.saved_file, 'w', encoding='utf-8'), indent=2)
